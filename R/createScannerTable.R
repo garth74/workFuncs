@@ -115,7 +115,8 @@ writeOutputs <- function(df, directoryPath, overwrite) {
 }
 #' @export
 createScansTable <- function(folderName = "scans to run", overwrite = FALSE) {
-  data <- lapply(getFiles(), readData)
+  files <- getFiles()
+  data <- lapply(files, readData)
   df <- data.table::rbindlist(lapply(data, getStuffCustomerWants))
   df <- df[order(df$Axis, df$`Scan Location`)]
   writeOutputs(df, fs::path_dir(files[1]), overwrite)
