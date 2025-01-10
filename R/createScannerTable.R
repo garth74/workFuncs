@@ -87,6 +87,20 @@
   )
 }
 
+.writeOutputs <- function(df, directoryPath, overwrite) {
+  outputFile <- fs::path(directoryPath, "scans.xlsx")
+  if (isFALSE(overwrite) && fs::file_exists(outputFile)) {
+    stop(sprintf("%s already exists!", outputFile))
+  }
+  rio::export(df, outputFile)
+  outputFile <- fs::path(directoryPath, "scans.tsv")
+  if (isFALSE(overwrite) && fs::file_exists(outputFile)) {
+    stop(sprintf("%s already exists!", outputFile))
+  }
+  rio::export(df, outputFile)
+}
+
+
 #' @export
 createScansTable <- function(folderName = "scans to run", overwrite = FALSE) {
   directoryPath <- fs::path_expand(fs::path("~", "Desktop", folderName))
@@ -96,5 +110,6 @@ createScansTable <- function(folderName = "scans to run", overwrite = FALSE) {
   }
   data <- lapply(list.files(directoryPath, "*.json", full.names = TRUE), .readData)
   df <- data.table::rbindlist(lapply(data, .getStuffCustomerWants))
-  rio::export(df[order(df$Axis, df$`Scan Location`)], outputFile)
+  df <- df[order(df$Axis, df$`Scan Location`)]
+  .writeOutputs(df, directoryPath, overwrite)
 }
