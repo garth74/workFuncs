@@ -49,6 +49,7 @@ read_utf16_json <- function(path, ...) {
     stringi::stri_join(collapse = "\n") |>
     jsonlite::parse_json()
 }
+
 #' @export
 getTagNames <- function(tagObj) {
   tagNames <- names(tagObj)
@@ -92,11 +93,12 @@ getDifferences <- function(df) {
   distance <- getDistances(df)
   c(distance[1], distance[-1] - distance[-(length(distance))])
 }
+
 #' @export
-getStuffCustomerWants <- function(df) {
+getStuffCustomerWants <- function(df, file) {
   diffs <- getDifferences(df)
   list(
-    Axis = ifelse(is.numeric(df[, "Distance X [ft]"][[1]]), "Horizontal", "Vertical"),
+    Axis = tools::toTitleCase(stringi::stri_extract_first_regex(file, "(horizontal|vertical)")),
     `Scan Location` = tools::toTitleCase(df[, "Source"][[1]][1]),
     Start = diffs[1],
     `Average Calculated Depth` = round(getAvgCalcDepth(df), 2),
@@ -114,10 +116,37 @@ writeOutputs <- function(df, directoryPath, overwrite) {
   rio::export(df, outputFile)
 }
 #' @export
-createScansTable <- function(folderName = "scans to run", overwrite = FALSE) {
+createScansTable <- function(nodickplz = FALSE, folderName = "scans to run", overwrite = FALSE) {
   files <- getFiles()
   data <- lapply(files, readData)
-  df <- data.table::rbindlist(lapply(data, getStuffCustomerWants))
+  df <- data.table::data.table(t(mapply(getStuffCustomerWants, data, files)))[, lapply(.SD, "[[", 1), by = .I][, I := NULL]
   df <- df[order(df$Axis, df$`Scan Location`)]
   writeOutputs(df, fs::path_dir(files[1]), overwrite)
+  if (!nodickplz) {
+    cat("
+    All done!
+
+    ⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠛⢉⢉⠉⠉⠻⣿⣿⣿⣿⣿⣿
+    ⣿⣿⣿⣿⣿⣿⣿⠟⠠⡰⣕⣗⣷⣧⣀⣅⠘⣿⣿⣿⣿⣿
+    ⣿⣿⣿⣿⣿⣿⠃⣠⣳⣟⣿⣿⣷⣿⡿⣜⠄⣿⣿⣿⣿⣿
+    ⣿⣿⣿⣿⡿⠁⠄⣳⢷⣿⣿⣿⣿⡿⣝⠖⠄⣿⣿⣿⣿⣿
+    ⣿⣿⣿⣿⠃⠄⢢⡹⣿⢷⣯⢿⢷⡫⣗⠍⢰⣿⣿⣿⣿⣿
+    ⣿⣿⣿⡏⢀⢄⠤⣁⠋⠿⣗⣟⡯⡏⢎⠁⢸⣿⣿⣿⣿⣿
+    ⣿⣿⣿⠄⢔⢕⣯⣿⣿⡲⡤⡄⡤⠄⡀⢠⣿⣿⣿⣿⣿⣿
+    ⣿⣿⠇⠠⡳⣯⣿⣿⣾⢵⣫⢎⢎⠆⢀⣿⣿⣿⣿⣿⣿⣿
+    ⣿⣿⠄⢨⣫⣿⣿⡿⣿⣻⢎⡗⡕⡅⢸⣿⣿⣿⣿⣿⣿⣿
+    ⣿⣿⠄⢜⢾⣾⣿⣿⣟⣗⢯⡪⡳⡀⢸⣿⣿⣿⣿⣿⣿⣿
+    ⣿⣿⠄⢸⢽⣿⣷⣿⣻⡮⡧⡳⡱⡁⢸⣿⣿⣿⣿⣿⣿⣿
+    ⣿⣿⡄⢨⣻⣽⣿⣟⣿⣞⣗⡽⡸⡐⢸⣿⣿⣿⣿⣿⣿⣿
+    ⣿⣿⡇⢀⢗⣿⣿⣿⣿⡿⣞⡵⡣⣊⢸⣿⣿⣿⣿⣿⣿⣿
+    ⣿⣿⣿⡀⡣⣗⣿⣿⣿⣿⣯⡯⡺⣼⠎⣿⣿⣿⣿⣿⣿⣿
+    ⣿⣿⣿⣧⠐⡵⣻⣟⣯⣿⣷⣟⣝⢞⡿⢹⣿⣿⣿⣿⣿⣿
+    ⣿⣿⣿⣿⡆⢘⡺⣽⢿⣻⣿⣗⡷⣹⢩⢃⢿⣿⣿⣿⣿⣿
+    ⣿⣿⣿⣿⣷⠄⠪⣯⣟⣿⢯⣿⣻⣜⢎⢆⠜⣿⣿⣿⣿⣿
+    ⣿⣿⣿⣿⣿⡆⠄⢣⣻⣽⣿⣿⣟⣾⡮⡺⡸⠸⣿⣿⣿⣿
+    ⣿⣿⡿⠛⠉⠁⠄⢕⡳⣽⡾⣿⢽⣯⡿⣮⢚⣅⠹⣿⣿⣿
+    ⡿⠋⠄⠄⠄⠄⢀⠒⠝⣞⢿⡿⣿⣽⢿⡽⣧⣳⡅⠌⠻⣿
+    ⠁⠄⠄⠄⠄⠄⠐⡐⠱⡱⣻⡻⣝⣮⣟⣿⣻⣟⣻⡺⣊
+    ")
+  }
 }
