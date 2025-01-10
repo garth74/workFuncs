@@ -8,10 +8,21 @@
 # ============================================================================ #
 # Helper Functions
 
+
 #' @export
 getFiles <- function() {
-  directoryPath <- fs::path_expand(fs::path("~", "Desktop", folderName))
-  list.files(directoryPath, "*.json", full.names = TRUE)
+  pathsToCheck <- c(
+    fs::path_expand(fs::path("~", "Desktop", "scans to run")),
+    fs::path_expand(fs::path("~", "OneDrive", "Desktop", "scans to run"))
+  )
+  for (i in seq_along(pathsToCheck)) {
+    path <- pathsToCheck[i]
+    result <- list.files(path, "*.json", full.names = TRUE)
+    if (length(result)) {
+      return(result)
+    }
+  }
+  stop(sprintf("Unable to find files. Checked in: \n%s", paste0(pathsToCheck, collapse = "\n")))
 }
 
 #' @export
@@ -48,9 +59,6 @@ getTagNames <- function(tagObj) {
 getFileName <- function(file) {
   gsub("[\\d_]+", "", as.character(fs::path_ext_remove(fs::path_file(file))), perl = TRUE)
 }
-
-
-
 #' @export
 convertToInches <- function(vec) {
   if (is.character(vec)) {
@@ -104,23 +112,11 @@ writeOutputs <- function(df, directoryPath, overwrite) {
     stop(sprintf("%s already exists!", outputFile))
   }
   rio::export(df, outputFile)
-  outputFile <- fs::path(directoryPath, "scans.tsv")
-  if (isFALSE(overwrite) && fs::file_exists(outputFile)) {
-    stop(sprintf("%s already exists!", outputFile))
-  }
-  rio::export(df, outputFile)
 }
-
-
 #' @export
 createScansTable <- function(folderName = "scans to run", overwrite = FALSE) {
-  directoryPath <- fs::path_expand(fs::path("~", "Desktop", folderName))
-  outputFile <- fs::path(directoryPath, "scans.xlsx")
-  if (isFALSE(overwrite) && fs::file_exists(outputFile)) {
-    stop(sprintf("%s already exists!", outputFile))
-  }
   data <- lapply(getFiles(), readData)
   df <- data.table::rbindlist(lapply(data, getStuffCustomerWants))
   df <- df[order(df$Axis, df$`Scan Location`)]
-  writeOutputs(df, directoryPath, overwrite)
+  writeOutputs(df, fs::path_dir(files[1]), overwrite)
 }
